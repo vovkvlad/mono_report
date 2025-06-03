@@ -21,7 +21,6 @@ package-lock.json
 Thumbs.db
 
 # Logs
-logs/
 *.log
 npm-debug.log*
 
@@ -49,3 +48,5 @@ pids/
 # Project specific
 
 .cursor/
+
+data/

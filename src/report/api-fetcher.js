@@ -31,10 +31,10 @@ class MonobankApiFetcher {
             logger.info('Client info fetched successfully');
             return response.data;
         } catch (error) {
-            logger.error('Error fetching client info:', error.message);
+            logger.error(['Error fetching client info:', error.message]);
             if (error.response) {
-                logger.error('Response status:', error.response.status);
-                logger.error('Response data:', error.response.data);
+                logger.error(['Response status:', error.response.status]);
+                logger.error(['Response data:', error.response.data]);
             }
             throw error;
         }

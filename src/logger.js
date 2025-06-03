@@ -24,16 +24,16 @@ const logger = winston.createLogger({
                 )
             )
         }),
-        // Write all logs with level 'info' and below to 'logs/app.log'
+        // Write all logs with level 'info' and below to 'data/app.log'
         new winston.transports.File({ 
-            filename: path.join('logs', 'app.log'),
+            filename: path.join('data', 'app.log'),
             maxsize: 5242880, // 5MB
             maxFiles: 5,
             tailable: true
         }),
-        // Write all logs with level 'error' and below to 'logs/error.log'
+        // Write all logs with level 'error' and below to 'data/error.log'
         new winston.transports.File({ 
-            filename: path.join('logs', 'error.log'),
+            filename: path.join('data', 'error.log'),
             level: 'error',
             maxsize: 5242880, // 5MB
             maxFiles: 5,
@@ -42,11 +42,11 @@ const logger = winston.createLogger({
     ]
 });
 
-// Create logs directory if it doesn't exist
+// Create data directory if it doesn't exist
 const fs = require('fs');
-const logsDir = path.join(process.cwd(), 'logs');
-if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir);
+const dataDir = path.join(process.cwd(), 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
 }
 
 module.exports = logger; 
