@@ -1,4 +1,5 @@
 const apiFetcher = require('./api-fetcher');
+const logger = require('../logger');
 
 /**
  * Calculate residual balance for a specific IBAN
@@ -22,7 +23,7 @@ async function calculateResidual() {
         const residual = targetAccount.balance - targetAccount.creditLimit;
         return Number((residual / 100).toFixed(2)); // Convert from cents to hryvnia and return as number
     } catch (error) {
-        console.error('Error calculating residual:', error.message);
+        logger.error('Error calculating residual:', error.message);
         throw error;
     }
 }
@@ -57,7 +58,7 @@ async function generateResidualReport() {
             weeklyLimit
         };
     } catch (error) {
-        console.error('Error generating residual report:', error.message);
+        logger.error('Error generating residual report:', error.message);
         throw error;
     }
 }

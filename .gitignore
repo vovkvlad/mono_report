@@ -10,11 +10,13 @@ package-lock.json
 .env.local
 .env.*.local
 
-# IDE and editor files
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+
+# OS
 .DS_Store
 Thumbs.db
 
@@ -45,4 +47,5 @@ pids/
 .yarn-integrity
 
 # Project specific
-src/bot/ 
+
+.cursor/
