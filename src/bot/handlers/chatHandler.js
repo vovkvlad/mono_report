@@ -8,12 +8,20 @@ class ChatHandler {
         this.bot = bot;
         this.activeChats = new Set();
         this.currentSchedule = null;
+        this.botUsername = null;
         this.activeChatsFile = path.join(process.cwd(), 'data', 'activeChats.json');
         
         // Initialize storage and load active chats
         this.initializeStorage();
         // Load active chats from file
         this.loadActiveChats();
+    }
+
+    /**
+     * Set the bot username for use in welcome messages
+     */
+    setBotUsername(username) {
+        this.botUsername = username;
     }
 
     /**
@@ -81,11 +89,16 @@ class ChatHandler {
         if (botId && msg.new_chat_members.some(member => member.id === botId)) {
             const chatId = msg.chat.id;
             this.addActiveChat(chatId);
+            
+            const botMention = this.botUsername ? `@${this.botUsername}` : '@bot_name';
+            
             await this.bot.sendMessage(
                 chatId,
                 `👋 Hello! I'm your periodic message bot.\n\n` +
-                `Current schedule: \`${this.currentSchedule}\`\n` +
-                `Use /cron to change the schedule.\n\n` +
+                `Current schedule: \`${this.currentSchedule}\`\n\n` +
+                `**Commands:**\n` +
+                `• \`/cron\` or \`${botMention} cron\` - Change schedule\n` +
+                `• \`/trigger\` or \`${botMention} trigger\` - Generate report now\n\n` +
                 `You can use [crontab.guru](https://crontab.guru/) to help create your schedule.`,
                 { parse_mode: 'Markdown' }
             );
