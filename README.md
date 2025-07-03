@@ -2,7 +2,18 @@
 
 A Node.js Telegram bot that sends periodic messages to a group chat.
 
-## Setup
+## Start the app
+```bash
+docker build -t telegram-mono-report-bot .
+docker run -d -v $(pwd)/data:/usr/src/app/data telegram-mono-report-bot 
+```
+
+for development purposes run 
+```bash
+docker run -it --rm -v $(pwd)/src:/usr/src/app/src -v $(pwd)/data:/usr/src/app/data telegram-mono-report-bot sh
+```
+
+## Development Setup
 
 1. Install dependencies:
 ```bash
