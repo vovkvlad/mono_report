@@ -98,7 +98,8 @@ class ChatHandler {
                 `Current schedule: \`${this.currentSchedule}\`\n\n` +
                 `**Commands:**\n` +
                 `• \`/cron\` or \`${botMention} cron\` - Change schedule\n` +
-                `• \`/trigger\` or \`${botMention} trigger\` - Generate report now\n\n` +
+                `• \`/trigger\` or \`${botMention} trigger\` - Generate report now\n` +
+                `• \`/help\` or \`${botMention} help\` - Show all commands\n\n` +
                 `You can use [crontab.guru](https://crontab.guru/) to help create your schedule.`,
                 { parse_mode: 'Markdown' }
             );

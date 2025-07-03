@@ -93,12 +93,50 @@ class Bot {
         }
     }
 
+    /**
+     * Handle help command (both direct and mentioned)
+     */
+    async handleHelpCommand(msg) {
+        try {
+            const botMention = this.botUsername ? `@${this.botUsername}` : '@bot_name';
+            
+            const helpMessage = `🤖 **Bot Commands Help**\n\n` +
+                `**Available Commands:**\n\n` +
+                `🔧 \`/cron\` or \`${botMention} cron\`\n` +
+                `   Configure the cron schedule for periodic messages\n\n` +
+                `⚡ \`/trigger\` or \`${botMention} trigger\`\n` +
+                `   Manually trigger a report generation and send immediately\n\n` +
+                `❓ \`/help\` or \`${botMention} help\`\n` +
+                `   Show this help message with all available commands\n\n` +
+                `**Current Schedule:** \`${this.cronHandler.getCurrentSchedule()}\`\n\n` +
+                `💡 You can use [crontab.guru](https://crontab.guru/) to help create your schedule.`;
+
+            await this.bot.sendMessage(
+                msg.chat.id,
+                helpMessage,
+                { parse_mode: 'Markdown' }
+            );
+            
+            logger.info(`Help command executed for user: ${msg.from.username || msg.from.first_name} (${msg.from.id})`);
+        } catch (error) {
+            logger.error(['Error handling /help command:', error]);
+            await this.bot.sendMessage(
+                msg.chat.id,
+                '❌ Error displaying help. Please check the logs.',
+                { parse_mode: 'Markdown' }
+            );
+        }
+    }
+
     setupHandlers() {
         // Handle /cron command
         this.bot.onText(/\/cron/, (msg) => this.handleCronCommand(msg));
 
         // Handle /trigger command
         this.bot.onText(/\/trigger/, (msg) => this.handleTriggerCommand(msg));
+
+        // Handle /help command
+        this.bot.onText(/\/help/, (msg) => this.handleHelpCommand(msg));
 
         // Handle messages for cron schedule updates and mentions
         this.bot.on('message', (msg) => {
@@ -123,10 +161,14 @@ class Bot {
                         case 'trigger':
                             this.handleTriggerCommand(msg);
                             return; // Don't process as regular message
+                        case 'help':
+                            this.handleHelpCommand(msg);
+                            return; // Don't process as regular message
                         default:
-                            // Unknown command via mention - could send help message
+                            // Unknown command via mention - show help
                             logger.info(`Unknown command via mention: ${command}`);
-                            break;
+                            this.handleHelpCommand(msg);
+                            return;
                     }
                 }
             }
