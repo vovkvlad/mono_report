@@ -1,6 +1,6 @@
 # Telegram Group Chat Bot
 
-A Node.js Telegram bot that sends periodic messages to a group chat.
+A Node.js Telegram bot that sends periodic messages with monobank finance report to a group chat.
 
 ## Start the app
 ```bash
@@ -29,9 +29,9 @@ npm install
    - Copy the `.env` file to `.env.local`
    - Fill in the following variables:
      - `TELEGRAM_BOT_TOKEN`: Your bot token from BotFather
-     - `GROUP_CHAT_ID`: The ID of your group chat
      - `CRON_SCHEDULE`: The schedule for sending messages (default: every 3 days)
-     - `MESSAGE`: The message to send
+     - `MONOBANK_API_KEY` - API key for monobank API usage
+     - `IBAN_TO_FETCH` - which finanical account to use for statistics
 
 4. Add the bot to your group:
    - Add the bot to your group chat
