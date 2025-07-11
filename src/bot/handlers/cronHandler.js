@@ -89,6 +89,8 @@ class CronHandler {
                 } catch (error) {
                     logger.error(['Error running scheduled message:', error.message]);
                 }
+            }, {
+                timezone: process.env.TIMEZONE || "Europe/Kiev"
             });
 
             return true;

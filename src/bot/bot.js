@@ -142,8 +142,8 @@ class Bot {
         this.bot.on('message', (msg) => {
             logger.info(`Message received: ${JSON.stringify({ from: msg?.from?.username, text: msg?.text })}`);
             
-            // Add chat to active chats if not already present
-            if(!this.chatHandler.getActiveChats().has(msg.chat.id)) {
+            // Add chat to active chats if not already present (only in development mode)
+            if(process.env.NODE_ENV !== 'production' && !this.chatHandler.getActiveChats().has(msg.chat.id)) {
                 this.chatHandler.addActiveChat(msg.chat.id);
             }
 
