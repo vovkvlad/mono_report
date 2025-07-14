@@ -134,6 +134,129 @@ class ChatHandler {
     }
 
     /**
+     * Handle trigger command (both direct and mentioned)
+     */
+    async handleTriggerCommand(msg) {
+        try {
+            logger.info(`Manual trigger requested by user: ${msg.from.username || msg.from.first_name} (${msg.from.id})`);
+            await this.bot.sendMessage(
+                msg.chat.id,
+                '🔄 Generating financial report...',
+                { parse_mode: 'Markdown' }
+            );
+            await this.sendPeriodicUpdate();
+            logger.info('Manual trigger completed successfully');
+        } catch (error) {
+            logger.error(['Error handling /trigger command:', error]);
+            await this.bot.sendMessage(
+                msg.chat.id,
+                '❌ Error generating report. Please check the logs.',
+                { parse_mode: 'Markdown' }
+            );
+        }
+    }
+
+    /**
+     * Handle help command (both direct and mentioned)
+     */
+    async handleHelpCommand(msg) {
+        try {
+            const botMention = this.botUsername ? `@${this.botUsername}` : '@bot_name';
+            const helpMessage = `🤖 **Bot Commands Help**\n\n` +
+                `**Available Commands:**\n\n` +
+                `🔧 \`/cron\` or \`${botMention} cron\`\n` +
+                `   Configure the cron schedule for periodic messages\n\n` +
+                `⚡ \`/trigger\` or \`${botMention} trigger\`\n` +
+                `   Manually trigger a report generation and send immediately\n\n` +
+                `❓ \`/help\` or \`${botMention} help\`\n` +
+                `   Show this help message with all available commands\n\n` +
+                `📄 \`/statement\` or \`${botMention} statement\`\n` +
+                `   Show a chronological statement report for the last week\n\n` +
+                `📊 \`/agg_statement\` or \`${botMention} agg_statement\`\n` +
+                `   Show an aggregated statement report (max to min spending) for the last week\n\n` +
+                `**Current Schedule:** \`${this.currentSchedule}\`\n\n` +
+                `💡 You can use [crontab.guru](https://crontab.guru/) to help create your schedule.`;
+            await this.bot.sendMessage(
+                msg.chat.id,
+                helpMessage,
+                { parse_mode: 'Markdown' }
+            );
+            logger.info(`Help command executed for user: ${msg.from.username || msg.from.first_name} (${msg.from.id})`);
+        } catch (error) {
+            logger.error(['Error handling /help command:', error]);
+            await this.bot.sendMessage(
+                msg.chat.id,
+                '❌ Error displaying help. Please check the logs.',
+                { parse_mode: 'Markdown' }
+            );
+        }
+    }
+
+    /**
+     * Handle statement command (both direct and mentioned)
+     */
+    async handleStatementCommand(msg) {
+        const { generateChronologicalReport } = require('../../report/report');
+        try {
+            logger.info(`Statement report requested by user: ${msg.from.username || msg.from.first_name} (${msg.from.id})`);
+            await this.bot.sendMessage(
+                msg.chat.id,
+                '📄 Fetching statement report for the last week...',
+                { parse_mode: 'Markdown' }
+            );
+            const transactions = await generateChronologicalReport();
+            if (!transactions.length) {
+                await this.bot.sendMessage(msg.chat.id, 'No transactions found for the last week.');
+                return;
+            }
+            const message = '*📄 Statement Report (Chronological)*\n\n' +
+                transactions.map(tx =>
+                    `• *${tx.localTime}*\n  ${tx.description || 'No description'}\n  Amount: ${tx.parsedAmount} ${tx.currency}\n  Balance: ${tx.parsedBalance} ${tx.currency}`
+                ).join('\n\n');
+            await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'Markdown' });
+        } catch (error) {
+            logger.error(['Error handling statement command:', error]);
+            await this.bot.sendMessage(
+                msg.chat.id,
+                '❌ Error generating statement report. Please check the logs.',
+                { parse_mode: 'Markdown' }
+            );
+        }
+    }
+
+    /**
+     * Handle agg_statement command (both direct and mentioned)
+     */
+    async handleAggStatementCommand(msg) {
+        const { generateMaxToMinReport } = require('../../report/report');
+        try {
+            logger.info(`Aggregated statement report requested by user: ${msg.from.username || msg.from.first_name} (${msg.from.id})`);
+            await this.bot.sendMessage(
+                msg.chat.id,
+                '📊 Fetching aggregated statement report for the last week...',
+                { parse_mode: 'Markdown' }
+            );
+            const transactions = await generateMaxToMinReport();
+            if (!transactions.length) {
+                await this.bot.sendMessage(msg.chat.id, 'No spending transactions found for the last week.');
+                return;
+            }
+            const message = '*📊 Aggregated Statement Report (Max to Min Spending)*\n\n' +
+                transactions.map(tx =>
+                    `• *${tx.localTime}*\n  ${tx.description || 'No description'}\n  Amount: ${tx.parsedAmount} ${tx.currency}\n  Balance: ${tx.parsedBalance} ${tx.currency}`
+                ).join('\n\n');
+            await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'Markdown' });
+        } catch (error) {
+            logger.error(['Error handling agg_statement command:', error]);
+            await this.bot.sendMessage(
+                msg.chat.id,
+                '❌ Error generating aggregated statement report. Please check the logs.',
+                { parse_mode: 'Markdown' }
+            );
+        }
+    }
+
+    /**
      * Send a periodic update with residual balance and spending limits to all active chats
      */
     async sendPeriodicUpdate() {

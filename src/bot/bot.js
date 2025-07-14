@@ -3,6 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const CronHandler = require('./handlers/cronHandler');
 const ChatHandler = require('./handlers/chatHandler');
 const logger = require('../logger');
+const { generateChronologicalReport, generateMaxToMinReport } = require('../report/report');
 
 class Bot {
     constructor() {
@@ -65,78 +66,21 @@ class Bot {
         this.cronHandler.handleCronCommand(msg);
     }
 
-    /**
-     * Handle trigger command (both direct and mentioned)
-     */
-    async handleTriggerCommand(msg) {
-        try {
-            logger.info(`Manual trigger requested by user: ${msg.from.username || msg.from.first_name} (${msg.from.id})`);
-            
-            // Send acknowledgment message
-            await this.bot.sendMessage(
-                msg.chat.id,
-                '🔄 Generating financial report...',
-                { parse_mode: 'Markdown' }
-            );
-            
-            // Trigger the periodic update
-            await this.chatHandler.sendPeriodicUpdate();
-            
-            logger.info('Manual trigger completed successfully');
-        } catch (error) {
-            logger.error(['Error handling /trigger command:', error]);
-            await this.bot.sendMessage(
-                msg.chat.id,
-                '❌ Error generating report. Please check the logs.',
-                { parse_mode: 'Markdown' }
-            );
-        }
-    }
-
-    /**
-     * Handle help command (both direct and mentioned)
-     */
-    async handleHelpCommand(msg) {
-        try {
-            const botMention = this.botUsername ? `@${this.botUsername}` : '@bot_name';
-            
-            const helpMessage = `🤖 **Bot Commands Help**\n\n` +
-                `**Available Commands:**\n\n` +
-                `🔧 \`/cron\` or \`${botMention} cron\`\n` +
-                `   Configure the cron schedule for periodic messages\n\n` +
-                `⚡ \`/trigger\` or \`${botMention} trigger\`\n` +
-                `   Manually trigger a report generation and send immediately\n\n` +
-                `❓ \`/help\` or \`${botMention} help\`\n` +
-                `   Show this help message with all available commands\n\n` +
-                `**Current Schedule:** \`${this.cronHandler.getCurrentSchedule()}\`\n\n` +
-                `💡 You can use [crontab.guru](https://crontab.guru/) to help create your schedule.`;
-
-            await this.bot.sendMessage(
-                msg.chat.id,
-                helpMessage,
-                { parse_mode: 'Markdown' }
-            );
-            
-            logger.info(`Help command executed for user: ${msg.from.username || msg.from.first_name} (${msg.from.id})`);
-        } catch (error) {
-            logger.error(['Error handling /help command:', error]);
-            await this.bot.sendMessage(
-                msg.chat.id,
-                '❌ Error displaying help. Please check the logs.',
-                { parse_mode: 'Markdown' }
-            );
-        }
-    }
-
     setupHandlers() {
         // Handle /cron command
         this.bot.onText(/\/cron/, (msg) => this.handleCronCommand(msg));
 
         // Handle /trigger command
-        this.bot.onText(/\/trigger/, (msg) => this.handleTriggerCommand(msg));
+        this.bot.onText(/\/trigger/, (msg) => this.chatHandler.handleTriggerCommand(msg));
 
         // Handle /help command
-        this.bot.onText(/\/help/, (msg) => this.handleHelpCommand(msg));
+        this.bot.onText(/\/help/, (msg) => this.chatHandler.handleHelpCommand(msg));
+
+        // Handle /statement command
+        this.bot.onText(/\/statement/, (msg) => this.chatHandler.handleStatementCommand(msg));
+
+        // Handle /agg_statement command
+        this.bot.onText(/\/agg_statement/, (msg) => this.chatHandler.handleAggStatementCommand(msg));
 
         // Handle messages for cron schedule updates and mentions
         this.bot.on('message', (msg) => {
@@ -159,15 +103,21 @@ class Bot {
                             this.handleCronCommand(msg);
                             return; // Don't process as regular message
                         case 'trigger':
-                            this.handleTriggerCommand(msg);
+                            this.chatHandler.handleTriggerCommand(msg);
                             return; // Don't process as regular message
                         case 'help':
-                            this.handleHelpCommand(msg);
+                            this.chatHandler.handleHelpCommand(msg);
                             return; // Don't process as regular message
+                        case 'statement':
+                            this.chatHandler.handleStatementCommand(msg);
+                            return;
+                        case 'agg_statement':
+                            this.chatHandler.handleAggStatementCommand(msg);
+                            return;
                         default:
                             // Unknown command via mention - show help
                             logger.info(`Unknown command via mention: ${command}`);
-                            this.handleHelpCommand(msg);
+                            this.chatHandler.handleHelpCommand(msg);
                             return;
                     }
                 }

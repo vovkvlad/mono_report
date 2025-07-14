@@ -1,6 +1,9 @@
 const apiFetcher = require('./api-fetcher');
 const logger = require('../logger');
 
+// Global variable to store account ID
+let ACCOUNT_ID = null;
+
 /**
  * Calculate residual balance for a specific IBAN
  * @returns {Promise<number>} Residual balance in hryvnia
@@ -18,6 +21,12 @@ async function calculateResidual() {
 
         if (!targetAccount) {
             throw new Error(`No account found with IBAN: ${targetIban}`);
+        }
+
+        // Set global ACCOUNT_ID if not already set
+        if (!ACCOUNT_ID) {
+            ACCOUNT_ID = targetAccount.id;
+            logger.info(`ACCOUNT_ID set to: ${ACCOUNT_ID}`);
         }
 
         const residual = targetAccount.balance - targetAccount.creditLimit;
@@ -63,7 +72,109 @@ async function generateResidualReport() {
     }
 }
 
+/**
+ * Calculate unix timestamp for a week ago from today
+ * @returns {number} Unix timestamp (seconds)
+ */
+function calculateUnixTimeStamp() {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return Math.floor(weekAgo.getTime() / 1000);
+}
+
+// Simple in-memory cache for statement API
+let statementCache = {
+    data: null,
+    timestamp: 0
+};
+const STATEMENT_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+
+/**
+ * Fetch statement for the account for the last week
+ * @returns {Promise<Array>} Array of statement transactions
+ */
+async function fetchStatement() {
+    const now = Date.now();
+    if (statementCache.data && (now - statementCache.timestamp < STATEMENT_CACHE_TTL_MS)) {
+        logger.info('Returning cached statement data');
+        return statementCache.data;
+    }
+    const fromTimestamp = calculateUnixTimeStamp();
+    let accountId = ACCOUNT_ID;
+    const targetIban = process.env.IBAN_TO_FETCH;
+
+    if (!accountId) {
+        // If ACCOUNT_ID is not set, fetch client info and set it
+        const clientInfo = await apiFetcher.getClientInfo();
+        const targetAccount = clientInfo.accounts.find(account => account.iban === targetIban);
+        if (!targetAccount) {
+            throw new Error(`No account found with IBAN: ${targetIban}`);
+        }
+        ACCOUNT_ID = targetAccount.id;
+        logger.info(`ACCOUNT_ID set to: ${ACCOUNT_ID}`);
+        accountId = ACCOUNT_ID;
+    }
+    const statement = await apiFetcher.getStatement(accountId, fromTimestamp);
+    // Format each transaction in the statement
+    const formatted = Array.isArray(statement)
+        ? statement.map(formatStatementResponse)
+        : [];
+    // Cache the result
+    statementCache = {
+        data: formatted,
+        timestamp: now
+    };
+    return formatted;
+}
+
+/**
+ * Generate a chronological report of transactions for the last week
+ * @returns {Promise<Array>} Array of transactions sorted by time ascending
+ */
+async function generateChronologicalReport() {
+    const statement = await fetchStatement();
+    // Sort by time ascending (oldest first)
+    return statement;
+}
+
+/**
+ * Generate a report of transactions sorted by amount (max to min, spending only)
+ * @returns {Promise<Array>} Array of transactions sorted by amount descending (spending only)
+ */
+async function generateMaxToMinReport() {
+    const statement = await fetchStatement();
+    // Spending transactions have negative amount
+    const spending = statement.filter(tx => tx.amount < 0);
+    // Sort by absolute value of amount descending (largest spending first)
+    return spending.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+}
+
+/**
+ * Format a statement object with additional properties
+ * @param {Object} statement - The statement object from Monobank
+ * @returns {Object} Formatted statement with localTime, parsedAmount, parsedBalance, and currency
+ */
+function formatStatementResponse(statement) {
+    const currencyMap = {
+        980: 'UAH',
+        840: 'USD',
+        978: 'EUR',
+        // will add more as needed
+    };
+    const timezone = process.env.TIMEZONE || 'Europe/Kiev';
+    const localTime = new Date(statement.time * 1000).toLocaleString('uk-UA', { timeZone: timezone });
+    return {
+        ...statement,
+        localTime,
+        parsedAmount: Math.abs((statement.amount / 100).toFixed(2)),
+        parsedBalance: Number((statement.balance / 100).toFixed(2)),
+        currency: currencyMap[statement.currencyCode] || statement.currencyCode
+    };
+}
+
 module.exports = {
     calculateResidual,
-    generateResidualReport
+    generateResidualReport,
+    generateChronologicalReport,
+    generateMaxToMinReport
 }; 
