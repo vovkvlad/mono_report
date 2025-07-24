@@ -130,6 +130,9 @@ class Bot {
         // Handle chat events
         this.bot.on('new_chat_members', (msg) => this.chatHandler.handleNewChatMember(msg, this.botId));
         this.bot.on('left_chat_member', (msg) => this.chatHandler.handleLeftChatMember(msg, this.botId));
+
+        // Handle callback queries from inline keyboard buttons
+        this.bot.on('callback_query', (msg) => this.chatHandler.handleCallbackQuery(msg));
     }
 
     setupCronService() {

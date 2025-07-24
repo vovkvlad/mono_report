@@ -3,6 +3,7 @@ const logger = require('../logger');
 
 // Global variable to store account ID
 let ACCOUNT_ID = null;
+let CREDIT_LIMIT = null;
 
 /**
  * Calculate residual balance for a specific IBAN
@@ -23,10 +24,11 @@ async function calculateResidual() {
             throw new Error(`No account found with IBAN: ${targetIban}`);
         }
 
-        // Set global ACCOUNT_ID if not already set
+        // Set global ACCOUNT_ID and CREDIT_LIMIT if not already set
         if (!ACCOUNT_ID) {
             ACCOUNT_ID = targetAccount.id;
-            logger.info(`ACCOUNT_ID set to: ${ACCOUNT_ID}`);
+            CREDIT_LIMIT = targetAccount.creditLimit;
+            logger.info(`ACCOUNT_ID set to: ${ACCOUNT_ID}, CREDIT_LIMIT set to: ${CREDIT_LIMIT}`);
         }
 
         const residual = targetAccount.balance - targetAccount.creditLimit;
@@ -111,13 +113,14 @@ async function fetchStatement() {
             throw new Error(`No account found with IBAN: ${targetIban}`);
         }
         ACCOUNT_ID = targetAccount.id;
-        logger.info(`ACCOUNT_ID set to: ${ACCOUNT_ID}`);
+        CREDIT_LIMIT = targetAccount.creditLimit;
+        logger.info(`ACCOUNT_ID set to: ${ACCOUNT_ID}, CREDIT_LIMIT set to: ${CREDIT_LIMIT}`);
         accountId = ACCOUNT_ID;
     }
     const statement = await apiFetcher.getStatement(accountId, fromTimestamp);
     // Format each transaction in the statement
     const formatted = Array.isArray(statement)
-        ? statement.map(formatStatementResponse)
+        ? statement.map(tx => formatStatementResponse(tx, CREDIT_LIMIT))
         : [];
     // Cache the result
     statementCache = {
@@ -152,22 +155,27 @@ async function generateMaxToMinReport() {
 /**
  * Format a statement object with additional properties
  * @param {Object} statement - The statement object from Monobank
+ * @param {number} creditLimit - The credit limit for the account
  * @returns {Object} Formatted statement with localTime, parsedAmount, parsedBalance, and currency
  */
-function formatStatementResponse(statement) {
+function formatStatementResponse(statement, creditLimit) {
     const currencyMap = {
         980: 'UAH',
         840: 'USD',
         978: 'EUR',
-        // will add more as needed
+        // Add more as needed
     };
     const timezone = process.env.TIMEZONE || 'Europe/Kiev';
     const localTime = new Date(statement.time * 1000).toLocaleString('uk-UA', { timeZone: timezone });
+    
+    // Calculate real balance by subtracting credit limit (your own money only)
+    const realBalance = statement.balance - creditLimit;
+    
     return {
         ...statement,
         localTime,
-        parsedAmount: Math.abs((statement.amount / 100).toFixed(2)),
-        parsedBalance: Number((statement.balance / 100).toFixed(2)),
+        parsedAmount: (statement.amount / 100).toFixed(2),
+        parsedBalance: Number((realBalance / 100).toFixed(2)),
         currency: currencyMap[statement.currencyCode] || statement.currencyCode
     };
 }

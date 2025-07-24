@@ -211,7 +211,7 @@ class ChatHandler {
             }
             const message = '*📄 Statement Report (Chronological)*\n\n' +
                 transactions.map(tx =>
-                    `• *${tx.localTime}*\n  ${tx.description || 'No description'}\n  Amount: ${tx.parsedAmount} ${tx.currency}\n  Balance: ${tx.parsedBalance} ${tx.currency}`
+                    `📅 *${tx.localTime}*\n    ${tx.description || 'No description'}\n💵 Amount: ${tx.parsedAmount} ${tx.currency}\n💰 Balance: ${tx.parsedBalance} ${tx.currency}`
                 ).join('\n\n');
             await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'Markdown' });
         } catch (error) {
@@ -243,7 +243,7 @@ class ChatHandler {
             }
             const message = '*📊 Aggregated Statement Report (Max to Min Spending)*\n\n' +
                 transactions.map(tx =>
-                    `• *${tx.localTime}*\n  ${tx.description || 'No description'}\n  Amount: ${tx.parsedAmount} ${tx.currency}\n  Balance: ${tx.parsedBalance} ${tx.currency}`
+                    `📅 *${tx.localTime}*\n    ${tx.description || 'No description'}\n💵 Amount: ${tx.parsedAmount} ${tx.currency}\n💰 Balance: ${tx.parsedBalance} ${tx.currency}`
                 ).join('\n\n');
             await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'Markdown' });
         } catch (error) {
@@ -270,6 +270,18 @@ class ChatHandler {
                 `*Spending Limits:*\n` +
                 `• Daily: ${report.dailyLimit.toFixed(2)} UAH\n` +
                 `• Weekly: ${report.weeklyLimit.toFixed(2)} UAH`;
+
+            const keyboard = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: 'Report', callback_data: 'statement_report' },
+                            { text: 'MaxToMin Report', callback_data: 'agg_statement_report' }
+                        ]
+                    ]
+                },
+                parse_mode: 'Markdown'
+            };
             
             if(this.activeChats.size === 0) {
                 logger.info('No active chats found');
@@ -278,7 +290,7 @@ class ChatHandler {
 
             for (const chatId of this.activeChats) {
                 try {
-                    this.bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+                    this.bot.sendMessage(chatId, message, keyboard);
                 } catch (error) {
                     logger.error([`Failed to send message to chat ${chatId}:`, error]);
                     if (error.response && error.response.statusCode === 403) {
@@ -291,6 +303,19 @@ class ChatHandler {
             }
         } catch (error) {
             logger.error(['Error sending periodic update:', error]);
+        }
+    }
+
+    /**
+     * Handle callback queries for inline keyboard buttons
+     */
+    async handleCallbackQuery(msg) {
+        const data = msg.data;
+        const chatId = msg.message.chat.id;
+        if (data === 'statement_report') {
+            await this.handleStatementCommand({ chat: { id: chatId }, from: msg.from });
+        } else if (data === 'agg_statement_report') {
+            await this.handleAggStatementCommand({ chat: { id: chatId }, from: msg.from });
         }
     }
 }
